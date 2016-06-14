@@ -2,13 +2,13 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Análise Preditiva Tabular</title>
+  <title>Análise LSR</title>
   <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="s.css">
 </head>
 <body>
   <div class="container">
-    <h1>Análise Preditiva Tabular</h1>
+    <h1>Análise LSR</h1>
     <p>Eduardo Côrtes, Guilherme Sehn, Gustavo Marchesan</p>
     <hr>
 
@@ -64,35 +64,6 @@ B:f|
         <div class="col-md-4">
           <h4>Tabela follow</h4>
           <div id="follow-set-table"></div>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="col-md-12">
-          <h4>Tabela de análise preditiva</h4>
-          <div id="parsing-table"></div>
-        </div>
-      </div>
-
-      <div id="multiple-entries-error" class="alert alert-danger" role="alert">
-        Foram detectados casos de múltiplas entradas na tabela de análise preditiva, portanto a gramática especificada não é LL(1).
-      </div>
-
-      <div class="row" id="sentence-recognizer-container">
-        <div class="col-md-12">
-          <h4>Testar entrada</h4>
-
-          <form id="sentence-recognizer-form">
-            <div class="input-group">
-              <input id="sentence-input" type="text" class="form-control" placeholder="Digite a sentença a ser reconhecida…">
-
-              <span class="input-group-btn">
-                <button class="btn btn-primary" type="submit">Reconhecer!</button>
-              </span>
-            </div>
-          </form>
-
-          <div id="sentence-recognizer-table"></div>
         </div>
       </div>
     </div>
