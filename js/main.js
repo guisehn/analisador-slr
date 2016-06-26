@@ -61,10 +61,10 @@ function validate(grammar) {
     return false
   }
 
-  if (GrammarVerifier.isLeftRecursive(grammar)) {
+  /*if (GrammarVerifier.isLeftRecursive(grammar)) {
     showError('Gramática não pode possuir recursão à esquerda')
     return false
-  }
+  }*/
 
   return true
 }
@@ -112,6 +112,41 @@ function showFollowSetTable(followSet) {
   $('#follow-set-table').html(table)
 }
 
+ //criar arquivo
+
+function slr(grammar){
+  /* Considerando que a gramática inserida já tenha o novo símbolo S'
+  (S -> S') não será necessário o código abaixo (corrigir codigo abaixo 
+  se for usar)
+  grammar.productionSet['@'] = grammar.productionSet[grammar.startSymbol];
+  grammar.productionSet[grammar.startSymbol] = ['@']
+  */
+  
+  // Colocar • à esquerda do lado esquerdo de todas as produções
+  _.forEach(grammar.productionSet, (production) => {
+    _.forEach(production, (right) => {
+      right = "•".concat(right)
+    })
+  })
+  
+  //1. Inicialização: C = {I0 = closure ({ E’ → • E})}
+  var c = {i0: closure(grammar.productionSet[grammar.startSymbol])}
+
+  //2. Repita:Para todo I ∈ C e X ∈ G, calcular goto(I, X) e adicionara C
+
+}
+
+function closure(productionSet){
+
+}
+
+
+function afterDot(production){
+  return x.include(".") ? x.substring(x.indexOf(".")+1) : "";
+}
+
+//fim das funções do novo arquivo
+
 function process(grammar) {
   if (!validate(grammar)) {
     return
@@ -124,6 +159,7 @@ function process(grammar) {
     showGrammarRepresentation(grammar)
     showFirstSetTable(firstSet)
     showFollowSetTable(followSet)
+    slr(grammar)
 
     $('#result').hide().fadeIn('fast')
 
