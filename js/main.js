@@ -6,8 +6,11 @@ var GrammarParser = require('./grammar-parser')
 var FirstSetFinder = require('./first-set-finder')
 var FollowSetFinder = require('./follow-set-finder')
 var ParsingTableFinder = require('./parsing-table-finder')
+var SentenceRecognizer = require('./sentence-recognizer')
 var FixturesApplier = require('./fixtures-applier')
 var $ = require('jquery')
+
+var appState = {}
 
 $('#use-example').click(e => {
   $('#grammar-input').val($('#example').text().trim())
@@ -172,6 +175,56 @@ function showParsingTable(grammar, parsingTable) {
   $('#parsing-table').html(table)
 }
 
+function showSentenceRecognition(recognition) {
+  var table = $('<table class="table table-bordered"></table>')
+    .html('\
+      <thead>\
+        <tr>\
+          <th>Pilha</th>\
+          <th>Entrada</th>\
+          <th>Ação</th>\
+        </tr>\
+      </thead>\
+      <tbody></tbody>\
+    ')
+
+  _.forEach(recognition.steps, step => {
+    var tr = $('<tr></tr>')
+    var actionText
+
+    switch (step.action[0]) {
+      case 'S':
+        actionText = 'Empilha'
+        break
+
+      case 'R':
+        actionText = 'Reduz'
+        break
+
+      case 'E':
+        actionText = 'Erro'
+        break
+
+      case 'A':
+        actionText = 'Aceita'
+        break
+    }
+
+    $('<td class="monospace"></td>').appendTo(tr).text(step.stack.join(' '))
+    $('<td class="monospace"></td>').appendTo(tr).text(step.input)
+    $('<td></td>').appendTo(tr).html(actionText + (step.action[1]
+      ? ' <span class="monospace">' + step.action[1] + '</span>' : ''))
+
+    table.find('tbody').append(tr)
+  })
+
+  var message = $('<div role="alert" class="alert"></div>')
+    .addClass(recognition.success ? 'alert-success' : 'alert-danger')
+    .text(recognition.success ? 'A sentença foi reconhecida' : 'A sentença não foi reconhecida')
+
+  $('#sentence-recognizer-table').hide().html('').append(message).append(table).fadeIn('fast')
+}
+
 function process(grammar) {
   if (!validate(grammar)) {
     return
@@ -183,23 +236,38 @@ function process(grammar) {
     // do ParsingTableFinder
     FixturesApplier.apply(GrammarParser, ParsingTableFinder)
 
-    var firstSet = FirstSetFinder.getFirstSets(grammar)
-    var followSet = FollowSetFinder.getFollowSets(grammar)
-    var separateProductions = GrammarParser.getSeparateProductions(grammar)
+    var g = appState
 
-    showGrammarRepresentation(grammar)
-    showFirstSetTable(firstSet)
-    showFollowSetTable(followSet)
-    showSeparateProductions(separateProductions)
+    g.grammar = grammar
+    g.firstSet = FirstSetFinder.getFirstSets(grammar)
+    g.followSet = FollowSetFinder.getFollowSets(grammar)
+    g.separateProductions = GrammarParser.getSeparateProductions(grammar)
+    g.parsingTable = ParsingTableFinder.generateTable(g.separateProductions)
 
-    var parsingTable = ParsingTableFinder.generateTable(separateProductions)
-
-    showParsingTable(grammar, parsingTable)
+    showGrammarRepresentation(g.grammar)
+    showFirstSetTable(g.firstSet)
+    showFollowSetTable(g.followSet)
+    showSeparateProductions(g.separateProductions)
+    showParsingTable(grammar, g.parsingTable)
 
     $('#result').hide().fadeIn('fast')
 
     $('#sentence-recognizer-table').hide()
     $('#sentence-input').val('')
+  } catch (e) {
+    console.log(e)
+    alert('Ocorreu um erro. Veja o console para mais detalhes.')
+  }
+}
+
+function recognize() {
+  var input = $('#sentence-input').val()
+
+  try {
+    var recognition = SentenceRecognizer.recognize(input, appState.separateProductions
+      , appState.parsingTable.actions, appState.parsingTable.goto)
+
+    showSentenceRecognition(recognition)
   } catch (e) {
     console.log(e)
     alert('Ocorreu um erro. Veja o console para mais detalhes.')
