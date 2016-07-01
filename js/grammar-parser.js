@@ -73,12 +73,27 @@ function parse(str) {
   validateDuplicatesOnLeft(pairs)
   validateMissingNonTerminals(pairs)
 
-  var firstSymbol = pairs[0][0]
+  var firstSymbol = '@'
   var productions = pairsToObject(pairs)
+  productions['@'] = [pairs[0][0]] // points @ to original start symbol
 
   return new Grammar(firstSymbol, productions)
 }
 
+function getSeparateProductions(grammar) {
+  var separateProductions = _(grammar.productionSet)
+    .map((right, left) => right.map(e => ({ left: left, right: e })))
+    .flatten()
+    .value()
+
+  // move start symbol to top
+  var start = _.remove(separateProductions, { left: grammar.startSymbol })[0]
+  separateProductions.unshift(start)
+
+  return separateProductions
+}
+
 module.exports = {
-  parse: parse
+  parse: parse,
+  getSeparateProductions: getSeparateProductions
 }

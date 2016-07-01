@@ -2,13 +2,13 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Análise Preditiva Tabular</title>
+  <title>Análise SLR</title>
   <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="s.css">
 </head>
 <body>
   <div class="container">
-    <h1>Análise Preditiva Tabular</h1>
+    <h1>Análise SLR</h1>
     <p>Eduardo Côrtes, Guilherme Sehn, Gustavo Marchesan</p>
     <hr>
 
@@ -34,8 +34,9 @@
         <div class="row">
           <div class="col-md-4">
 <pre id="example">
-A:Bb|c|d
-B:f|
+E:E+T|T
+T:T*F|F
+F:(E)|i
 </pre>
           </div>
         </div>
@@ -52,30 +53,41 @@ B:f|
 
       <div class="row">
         <div class="col-md-4">
-          <h4>Representação da gramática</h4>
-          <pre id="representation"></pre>
+          <div class="row">
+            <div class="col-md-12">
+              <h4>Representação da gramática</h4>
+              <pre id="representation"></pre>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-12">
+              <h4>Produções numeradas</h4>
+              <ol start="0" class="monospace" id="separate-productions"></ol>
+            </div>
+          </div>
         </div>
 
-        <div class="col-md-4">
-          <h4>Tabela first</h4>
-          <div id="first-set-table"></div>
-        </div>
+        <div class="col-md-8">
+          <div class="row">
+            <div class="col-md-6">
+              <h4>Tabela first</h4>
+              <div id="first-set-table"></div>
+            </div>
 
-        <div class="col-md-4">
-          <h4>Tabela follow</h4>
-          <div id="follow-set-table"></div>
-        </div>
-      </div>
+            <div class="col-md-6">
+              <h4>Tabela follow</h4>
+              <div id="follow-set-table"></div>
+            </div>
+          </div>
 
-      <div class="row">
-        <div class="col-md-12">
-          <h4>Tabela de análise preditiva</h4>
-          <div id="parsing-table"></div>
+          <div class="row">
+            <div class="col-md-12">
+              <h4>Tabela SLR</h4>
+              <div id="parsing-table"></div>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <div id="multiple-entries-error" class="alert alert-danger" role="alert">
-        Foram detectados casos de múltiplas entradas na tabela de análise preditiva, portanto a gramática especificada não é LL(1).
       </div>
 
       <div class="row" id="sentence-recognizer-container">

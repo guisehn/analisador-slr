@@ -1,5 +1,5 @@
 {
-  "name": "analise-preditiva-tabular",
+  "name": "slr-analyzer",
   "version": "0.0.1",
   "license": "MIT",
   "browserify": {

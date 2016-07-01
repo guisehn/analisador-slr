@@ -1,42 +1,44 @@
 'use strict'
 
-var Utils = require('./utils')
-var FirstSetFinder = require('./first-set-finder')
-var FollowSetFinder = require('./follow-set-finder')
 var _ = require('lodash')
 
-function getParsingRow(grammar, firstSets, followSets, symbol) {
-  var terminals = grammar.getTerminals().concat(['$'])
-  var row = {}
-
-  terminals.forEach(t => {
-    var first = _.find(firstSets[symbol], { symbol: t })
-    row[t] = _.get(first, 'productions', [])
+function generateTable(grammar) {
+  // Colocar • à esquerda do lado esquerdo de todas as produções
+  _.forEach(grammar.productionSet, (production) => {
+    _.forEach(production, (right) => {
+      right = '•'.concat(right)
+    })
   })
 
-  // se contém sentença vazia no conjunto de produções, cria items do follow
-  if (_.includes(grammar.productionSet[symbol], '')) {
-    followSets[symbol].forEach(s => {
-      row[s] = row[s].concat('')
-    })
+  // 1. Inicialização: C = {I0 = closure ({ E’ → • E})}
+  var c = { i0: closure(grammar.productionSet[grammar.startSymbol]) }
+
+  // 2. Repita:Para todo I ∈ C e X ∈ G, calcular goto(I, X) e adicionara C
+
+  // Dudu: aqui você deve retornar a tabela que usamos para reconhecimento,
+  // ela é dividida em duas tabelas:
+  //
+  // actions: a parte das ações, onde as colunas são os não-terminais
+  // e os valores podem ser "sX", "rX" ou "accept", onde X é o número
+  //
+  // goto: a parte dos desvios, onde as colunas são os terminais e os
+  // valores podem ser os números dos desvios
+  //
+  // Exemplos destes valores estão no arquivo fixtures-applier.js
+  return {
+    actions: null,
+    goto: null
   }
-
-  return row
 }
 
-function getParsingTable(grammar) {
-  var firstSets = FirstSetFinder.getFirstSets(grammar);
-  var followSets = FollowSetFinder.getFollowSets(grammar);
+function closure(productionSet) {
 
-  return _.mapValues(grammar.productionSet,
-    (rightSide, leftSide) => getParsingRow(grammar, firstSets, followSets, leftSide))
 }
 
-function checkMultipleEntries(parsingTable) {
-  return _.some(parsingTable, x => _.some(x, y => y.length > 1))
+function afterDot(production) {
+  return x.include('.') ? x.substring(x.indexOf('.') + 1) : ''
 }
 
 module.exports = {
-  getParsingTable: getParsingTable,
-  checkMultipleEntries: checkMultipleEntries
+  generateTable: generateTable
 }

@@ -7,9 +7,10 @@ var FirstSetFinder = require('./first-set-finder')
 var FollowSetFinder = require('./follow-set-finder')
 var ParsingTableFinder = require('./parsing-table-finder')
 var SentenceRecognizer = require('./sentence-recognizer')
+var FixturesApplier = require('./fixtures-applier')
 var $ = require('jquery')
-var parsingTable
-var grammar
+
+var appState = {}
 
 $('#use-example').click(e => {
   $('#grammar-input').val($('#example').text().trim())
@@ -65,10 +66,10 @@ function validate(grammar) {
     return false
   }
 
-  if (GrammarVerifier.isLeftRecursive(grammar)) {
+  /*if (GrammarVerifier.isLeftRecursive(grammar)) {
     showError('Gramática não pode possuir recursão à esquerda')
     return false
-  }
+  }*/
 
   return true
 }
@@ -100,35 +101,6 @@ function mountTable(object, leftTitle, rightTitle) {
   return table
 }
 
-function showParsingTable(grammar, parsingTable) {
-  var table = $('<table class="table table-bordered monospace"></table>')
-    .html('\
-      <thead><tr><th></th></tr></thead>\
-      <tbody></tbody>\
-    ')
-
-  var terminals = _.keys(parsingTable[grammar.getNonTerminals()[0]])
-  var width = Math.ceil(100 / terminals.length)
-
-  _.forEach(terminals, terminal => {
-    $('<th></th>').css('width', width + '%').text(terminal).appendTo(table.find('thead tr'))
-  })
-
-  _.forEach(parsingTable, (items, leftSide) => {
-    var tr = $('<tr></tr>').appendTo(table.find('tbody'))
-
-    $('<th></th>').text(leftSide).appendTo(tr)
-
-    _.forEach(terminals, terminal => {
-      $('<td></td>').text(
-        Utils.emptyToEpsilon(items[terminal]).map(p => leftSide + ' → ' + p).join(', ')
-      ).appendTo(tr)
-    })
-  })
-
-  $('#parsing-table').html(table)
-}
-
 function showGrammarRepresentation(grammar) {
   $('#representation').text(grammar.getRepresentation())
 }
@@ -145,28 +117,104 @@ function showFollowSetTable(followSet) {
   $('#follow-set-table').html(table)
 }
 
+function showSeparateProductions(separateProductions) {
+  $('#separate-productions').html(separateProductions
+    .map(p => $('<li></li>').html(p.left + ' → ' + p.right)))
+}
+
+function showParsingTable(grammar, parsingTable) {
+  var table = $('<table class="table table-bordered"></table>')
+    .html('\
+      <thead class="center">\
+        <tr>\
+          <th width="10%" rowspan="2">Estado</th>\
+          <th rowspan="1">Ação</th>\
+          <th>Desvio</th>\
+        </tr>\
+      </thead>\
+      <tbody></tbody>\
+    ')
+
+  var nonTerminals = grammar.getNonTerminals().filter(s => s !== '@')
+  var terminals = grammar.getTerminals().concat('$')
+  var nonTerminalsHeaders = nonTerminals.map(nt => $('<th></th>').text(nt))
+  var terminalsHeaders = terminals.map(t => $('<th></th>').text(t))
+  var amountOfStates = _.max([_.keys(parsingTable.actions).length, _.keys(parsingTable.gotoTable).length])
+
+  table.find('th:eq(1)').attr('colspan', terminals.length)
+  table.find('th:eq(2)').attr('colspan', nonTerminals.length)
+
+  $('<tr class="monospace center"></tr>')
+    .appendTo(table.find('thead'))
+    .append(terminalsHeaders.concat(nonTerminalsHeaders))
+
+  table.find('tbody').append(_.times(amountOfStates, n => $('<tr class="center"><td>' + n + '</td></tr>')))
+
+  _.times(amountOfStates, stateNumber => {
+    var tr = table.find('tbody tr').eq(stateNumber)
+    var actions = parsingTable.actions[stateNumber] || {};
+    var deviations = parsingTable.goto[stateNumber] || {};
+
+    terminals.forEach(terminal => {
+      var action = actions[terminal]
+      var accepted = (action === 'accept')
+      var text = accepted ? 'ac' : (action || '')
+
+      $('<td></td>').text(text).appendTo(tr).addClass(accepted ? 'success' : '')
+    })
+
+    nonTerminals.forEach(terminal => {
+      var text = deviations[terminal] || ''
+      $('<td></td>').text(text).appendTo(tr)
+    })
+  })
+
+  var el = table.find('tbody tr:first td:gt(1)')
+  el.css('width', (90 / el.length) + '%')
+
+  $('#parsing-table').html(table)
+}
+
 function showSentenceRecognition(recognition) {
   var table = $('<table class="table table-bordered"></table>')
     .html('\
       <thead>\
         <tr>\
-          <th></th>\
-          <th></th>\
-          <th></th>\
+          <th>Pilha</th>\
+          <th>Entrada</th>\
+          <th>Ação</th>\
         </tr>\
       </thead>\
-      <tbody class="monospace"></tbody>\
+      <tbody></tbody>\
     ')
 
-  table.find('th:eq(0)').text("Pilha")
-  table.find('th:eq(1)').text("Entrada")
-  table.find('th:eq(2)').text("Saída")
-
-  _.forEach(recognition.table, line => {
+  _.forEach(recognition.steps, step => {
     var tr = $('<tr></tr>')
-    $('<td></td>').appendTo(tr).text(line.s)
-    $('<td></td>').appendTo(tr).text(line.i)
-    $('<td></td>').appendTo(tr).text(line.o)
+    var actionText
+
+    switch (step.action[0]) {
+      case 'S':
+        actionText = 'Empilha'
+        break
+
+      case 'R':
+        actionText = 'Reduz'
+        break
+
+      case 'E':
+        actionText = 'Erro'
+        break
+
+      case 'A':
+        actionText = 'Aceita'
+        break
+    }
+
+    $('<td class="monospace"></td>').appendTo(tr).text(step.stack.join(' '))
+    $('<td class="monospace"></td>').appendTo(tr).text(step.input)
+    $('<td></td>').appendTo(tr).html(actionText + (step.action[1]
+      ? ' <span class="monospace">' + step.action[1] + '</span>' : ''))
+
     table.find('tbody').append(tr)
   })
 
@@ -183,25 +231,24 @@ function process(grammar) {
   }
 
   try {
-    var firstSet = FirstSetFinder.getFirstSets(grammar)
-    var followSet = FollowSetFinder.getFollowSets(grammar)
-    var parsingTable = ParsingTableFinder.getParsingTable(grammar)
+    // Dudu: A linha abaixo troca as funções do GrammarParser e do ParsingTableFinder para
+    // retornarem valores fake. Remova quando for implementar o código de verdade
+    // do ParsingTableFinder
+    FixturesApplier.apply(GrammarParser, ParsingTableFinder)
 
-    showGrammarRepresentation(grammar)
-    showFirstSetTable(firstSet)
-    showFollowSetTable(followSet)
-    showParsingTable(grammar, parsingTable)
+    var g = appState
 
-    if (ParsingTableFinder.checkMultipleEntries(parsingTable)) {
-      $('#multiple-entries-error').show()
-      $('#sentence-recognizer-container').hide()
-    } else {
-      $('#multiple-entries-error').hide()
-      $('#sentence-recognizer-container').show()
-    }
+    g.grammar = grammar
+    g.firstSet = FirstSetFinder.getFirstSets(grammar)
+    g.followSet = FollowSetFinder.getFollowSets(grammar)
+    g.separateProductions = GrammarParser.getSeparateProductions(grammar)
+    g.parsingTable = ParsingTableFinder.generateTable(g.separateProductions)
 
-    window.parsingTable = parsingTable
-    window.grammar = grammar
+    showGrammarRepresentation(g.grammar)
+    showFirstSetTable(g.firstSet)
+    showFollowSetTable(g.followSet)
+    showSeparateProductions(g.separateProductions)
+    showParsingTable(grammar, g.parsingTable)
 
     $('#result').hide().fadeIn('fast')
 
@@ -217,8 +264,8 @@ function recognize() {
   var input = $('#sentence-input').val()
 
   try {
-    var recognition = SentenceRecognizer.recognize(input, window.grammar
-      , window.parsingTable)
+    var recognition = SentenceRecognizer.recognize(input, appState.separateProductions
+      , appState.parsingTable.actions, appState.parsingTable.goto)
 
     showSentenceRecognition(recognition)
   } catch (e) {

@@ -1,48 +1,69 @@
 'use strict'
 
-var Utils = require('./utils')
-var _ = require('lodash')
+const _ = require('lodash')
 
-function recognize(input, grammar, parsingTable) {
-  input = input.split('').concat('$')
+function recognize(input, productionSet, actionTable, gotoTable) {
+  input += '$'
 
-  var stack = ['$', grammar.startSymbol]
-  var output = ''
-  var table = []
+  let steps = []
+  let stack = [0]
+  let success = false
 
-  table.push({ s: stack.join(''), i: input.join(''), o: output })
+  while (true) {
+    let startOfInput = input[0]
+    let topOfStack = _.last(stack)
+    let actionCell = _.get(actionTable[topOfStack], startOfInput)
+    let currentStep = { stack: _.clone(stack), input: input, action: '' }
 
-  while (stack.length && input.length) {
-    var last = _.last(stack)
+    if (!actionCell) {
+      currentStep.action = ['E']
+      steps.push(currentStep)
+      break
+    }
 
-  	if (last === input[0]) {
-  		input.shift()
-  		stack.pop()
-  		output = ''
-  	} else {
-  		var aux = parsingTable[last]
+    if (actionCell === 'accept') {
+      currentStep.action = ['A']
+      success = true
+      steps.push(currentStep)
+      break
+    }
 
-  		if (!aux || !(input[0] in aux) || aux[input[0]].length === 0){
-  			break
-  		}
+    let action = actionCell[0]
+    let n = parseInt(actionCell.substr(1), 10)
 
-  		aux = aux[input[0]][0].split('')
+    if (action === 's') {
+      currentStep.action = ['S']
+      stack.push(startOfInput, n)
+      input = input.substr(1)
 
-  		stack.pop()
-  		stack = stack.concat(_.clone(aux).reverse())
+      steps.push(currentStep)
+      continue
+    }
 
-  		output = last + ' → ' + Utils.emptyToEpsilon(aux.join(''))
-  	}
+    if (action === 'r') {
+      let production = productionSet[n]
+      currentStep.action = ['R', production.left + ' → ' + production.right]
 
-  	if (!(stack.length === 0 && input.length === 0)) {
-		  table.push({ s: stack.join(''), i: input.join(''), o: output })
-  	}
+      // removes right-side of the production from the stack
+      _.times(production.right.length * 2, n => stack.pop())
+
+      // adds left-side of the production + go-to deviation to the stack
+      let topOfStack = _.last(stack)
+      let deviation = _.get(gotoTable[topOfStack], production.left)
+
+      if (!deviation) {
+        currentStep.action = 'Erro'
+        steps.push(currentStep)
+        break
+      }
+
+      stack.push(production.left, deviation)
+      steps.push(currentStep)
+      continue
+    }
   }
 
-  return {
-    success: stack.length === 0 && input.length === 0,
-    table: table
-  }
+  return { success: success, steps: steps }
 }
 
 module.exports = {
