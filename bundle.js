@@ -87,7 +87,120 @@ module.exports = {
   getFirstSets: getFirstSets
 };
 
-},{"./utils":9,"lodash":11}],2:[function(require,module,exports){
+},{"./utils":10,"lodash":12}],2:[function(require,module,exports){
+'use strict';
+
+var separateProductions = [{ left: '@', right: 'E' }, { left: 'E', right: 'E+T' }, { left: 'E', right: 'T' }, { left: 'T', right: 'T*F' }, { left: 'T', right: 'F' }, { left: 'F', right: '(E)' }, { left: 'F', right: 'i' }];
+
+var actionTable = {
+  0: {
+    'i': 's5',
+    '(': 's4'
+  },
+
+  1: {
+    '+': 's6',
+    '$': 'accept'
+  },
+
+  2: {
+    '+': 'r2',
+    '*': 's7',
+    ')': 'r2',
+    '$': 'r2'
+  },
+
+  3: {
+    '+': 'r4',
+    '*': 'r4',
+    ')': 'r4',
+    '$': 'r4'
+  },
+
+  4: {
+    'i': 's5',
+    '(': 's4'
+  },
+
+  5: {
+    '+': 'r6',
+    '*': 'r6',
+    ')': 'r6',
+    '$': 'r6'
+  },
+
+  6: {
+    'i': 's5',
+    '(': 's4'
+  },
+
+  7: {
+    'i': 's5',
+    '(': 's4'
+  },
+
+  8: {
+    '+': 's6',
+    ')': 's11'
+  },
+
+  9: {
+    '+': 'r1',
+    '*': 's7',
+    ')': 'r1',
+    '$': 'r1'
+  },
+
+  10: {
+    '+': 'r3',
+    '*': 'r3',
+    ')': 'r3',
+    '$': 'r3'
+  },
+
+  11: {
+    '+': 'r5',
+    '*': 'r5',
+    ')': 'r5',
+    '$': 'r5'
+  }
+};
+
+var gotoTable = {
+  0: {
+    'E': 1,
+    'T': 2,
+    'F': 3
+  },
+
+  4: {
+    'E': 8,
+    'T': 2,
+    'F': 3
+  },
+
+  6: {
+    'T': 9,
+    'F': 3
+  },
+
+  7: {
+    'F': 10
+  }
+};
+
+module.exports = {
+  apply: function apply(grammarParser, parsingTableFinder) {
+    grammarParser.getSeparateProductions = function () {
+      return separateProductions;
+    };
+    parsingTableFinder.generateTable = function () {
+      return { actions: actionTable, goto: gotoTable };
+    };
+  }
+};
+
+},{}],3:[function(require,module,exports){
 'use strict';
 
 var Utils = require('./utils');
@@ -170,7 +283,7 @@ module.exports = {
   getFollowSets: getFollowSets
 };
 
-},{"./first-set-finder":1,"./utils":9,"lodash":11}],3:[function(require,module,exports){
+},{"./first-set-finder":1,"./utils":10,"lodash":12}],4:[function(require,module,exports){
 'use strict';
 
 var Utils = require('./utils');
@@ -246,17 +359,33 @@ function parse(str) {
   validateDuplicatesOnLeft(pairs);
   validateMissingNonTerminals(pairs);
 
-  var firstSymbol = pairs[0][0];
+  var firstSymbol = '@';
   var productions = pairsToObject(pairs);
+  productions['@'] = [pairs[0][0]]; // points @ to original start symbol
 
   return new Grammar(firstSymbol, productions);
 }
 
+function getSeparateProductions(grammar) {
+  var separateProductions = _(grammar.productionSet).map(function (right, left) {
+    return right.map(function (e) {
+      return { left: left, right: e };
+    });
+  }).flatten().value();
+
+  // move start symbol to top
+  var start = _.remove(separateProductions, { left: grammar.startSymbol })[0];
+  separateProductions.unshift(start);
+
+  return separateProductions;
+}
+
 module.exports = {
-  parse: parse
+  parse: parse,
+  getSeparateProductions: getSeparateProductions
 };
 
-},{"./grammar":5,"./utils":9,"lodash":11}],4:[function(require,module,exports){
+},{"./grammar":6,"./utils":10,"lodash":12}],5:[function(require,module,exports){
 'use strict';
 
 var Utils = require('./utils');
@@ -284,7 +413,7 @@ module.exports = {
   isLeftRecursive: isLeftRecursive
 };
 
-},{"./utils":9,"lodash":11}],5:[function(require,module,exports){
+},{"./utils":10,"lodash":12}],6:[function(require,module,exports){
 'use strict';
 
 var Utils = require('./utils');
@@ -322,7 +451,7 @@ Grammar.prototype.getRepresentation = function () {
 
 module.exports = Grammar;
 
-},{"./utils":9,"lodash":11}],6:[function(require,module,exports){
+},{"./utils":10,"lodash":12}],7:[function(require,module,exports){
 'use strict';
 
 var Utils = require('./utils');
@@ -332,9 +461,10 @@ var FirstSetFinder = require('./first-set-finder');
 var FollowSetFinder = require('./follow-set-finder');
 var ParsingTableFinder = require('./parsing-table-finder');
 var SentenceRecognizer = require('./sentence-recognizer');
+var FixturesApplier = require('./fixtures-applier');
 var $ = require('jquery');
-var parsingTable;
-var grammar;
+
+var appState = {};
 
 $('#use-example').click(function (e) {
   $('#grammar-input').val($('#example').text().trim());
@@ -390,10 +520,10 @@ function validate(grammar) {
     return false;
   }
 
-  if (GrammarVerifier.isLeftRecursive(grammar)) {
-    showError('Gramática não pode possuir recursão à esquerda');
-    return false;
-  }
+  /*if (GrammarVerifier.isLeftRecursive(grammar)) {
+    showError('Gramática não pode possuir recursão à esquerda')
+    return false
+  }*/
 
   return true;
 }
@@ -424,34 +554,6 @@ function mountTable(object, leftTitle, rightTitle) {
   return table;
 }
 
-function showParsingTable(grammar, parsingTable) {
-  var table = $('<table class="table table-bordered monospace"></table>').html('\
-      <thead><tr><th></th></tr></thead>\
-      <tbody></tbody>\
-    ');
-
-  var terminals = _.keys(parsingTable[grammar.getNonTerminals()[0]]);
-  var width = Math.ceil(100 / terminals.length);
-
-  _.forEach(terminals, function (terminal) {
-    $('<th></th>').css('width', width + '%').text(terminal).appendTo(table.find('thead tr'));
-  });
-
-  _.forEach(parsingTable, function (items, leftSide) {
-    var tr = $('<tr></tr>').appendTo(table.find('tbody'));
-
-    $('<th></th>').text(leftSide).appendTo(tr);
-
-    _.forEach(terminals, function (terminal) {
-      $('<td></td>').text(Utils.emptyToEpsilon(items[terminal]).map(function (p) {
-        return leftSide + ' → ' + p;
-      }).join(', ')).appendTo(tr);
-    });
-  });
-
-  $('#parsing-table').html(table);
-}
-
 function showGrammarRepresentation(grammar) {
   $('#representation').text(grammar.getRepresentation());
 }
@@ -468,27 +570,108 @@ function showFollowSetTable(followSet) {
   $('#follow-set-table').html(table);
 }
 
+function showSeparateProductions(separateProductions) {
+  $('#separate-productions').html(separateProductions.map(function (p) {
+    return $('<li></li>').html(p.left + ' → ' + p.right);
+  }));
+}
+
+function showParsingTable(grammar, parsingTable) {
+  var table = $('<table class="table table-bordered"></table>').html('\
+      <thead class="center">\
+        <tr>\
+          <th width="10%" rowspan="2">Estado</th>\
+          <th rowspan="1">Ação</th>\
+          <th>Desvio</th>\
+        </tr>\
+      </thead>\
+      <tbody></tbody>\
+    ');
+
+  var nonTerminals = grammar.getNonTerminals().filter(function (s) {
+    return s !== '@';
+  });
+  var terminals = grammar.getTerminals().concat('$');
+  var nonTerminalsHeaders = nonTerminals.map(function (nt) {
+    return $('<th></th>').text(nt);
+  });
+  var terminalsHeaders = terminals.map(function (t) {
+    return $('<th></th>').text(t);
+  });
+  var amountOfStates = _.max([_.keys(parsingTable.actions).length, _.keys(parsingTable.gotoTable).length]);
+
+  table.find('th:eq(1)').attr('colspan', terminals.length);
+  table.find('th:eq(2)').attr('colspan', nonTerminals.length);
+
+  $('<tr class="monospace center"></tr>').appendTo(table.find('thead')).append(terminalsHeaders.concat(nonTerminalsHeaders));
+
+  table.find('tbody').append(_.times(amountOfStates, function (n) {
+    return $('<tr class="center"><td>' + n + '</td></tr>');
+  }));
+
+  _.times(amountOfStates, function (stateNumber) {
+    var tr = table.find('tbody tr').eq(stateNumber);
+    var actions = parsingTable.actions[stateNumber] || {};
+    var deviations = parsingTable.goto[stateNumber] || {};
+
+    terminals.forEach(function (terminal) {
+      var action = actions[terminal];
+      var accepted = action === 'accept';
+      var text = accepted ? 'ac' : action || '';
+
+      $('<td></td>').text(text).appendTo(tr).addClass(accepted ? 'success' : '');
+    });
+
+    nonTerminals.forEach(function (terminal) {
+      var text = deviations[terminal] || '';
+      $('<td></td>').text(text).appendTo(tr);
+    });
+  });
+
+  var el = table.find('tbody tr:first td:gt(1)');
+  el.css('width', 90 / el.length + '%');
+
+  $('#parsing-table').html(table);
+}
+
 function showSentenceRecognition(recognition) {
   var table = $('<table class="table table-bordered"></table>').html('\
       <thead>\
         <tr>\
-          <th></th>\
-          <th></th>\
-          <th></th>\
+          <th>Pilha</th>\
+          <th>Entrada</th>\
+          <th>Ação</th>\
         </tr>\
       </thead>\
-      <tbody class="monospace"></tbody>\
+      <tbody></tbody>\
     ');
 
-  table.find('th:eq(0)').text("Pilha");
-  table.find('th:eq(1)').text("Entrada");
-  table.find('th:eq(2)').text("Saída");
-
-  _.forEach(recognition.table, function (line) {
+  _.forEach(recognition.steps, function (step) {
     var tr = $('<tr></tr>');
-    $('<td></td>').appendTo(tr).text(line.s);
-    $('<td></td>').appendTo(tr).text(line.i);
-    $('<td></td>').appendTo(tr).text(line.o);
+    var actionText;
+
+    switch (step.action[0]) {
+      case 'S':
+        actionText = 'Empilha';
+        break;
+
+      case 'R':
+        actionText = 'Reduz';
+        break;
+
+      case 'E':
+        actionText = 'Erro';
+        break;
+
+      case 'A':
+        actionText = 'Aceita';
+        break;
+    }
+
+    $('<td class="monospace"></td>').appendTo(tr).text(step.stack.join(' '));
+    $('<td class="monospace"></td>').appendTo(tr).text(step.input);
+    $('<td></td>').appendTo(tr).html(actionText + (step.action[1] ? ' <span class="monospace">' + step.action[1] + '</span>' : ''));
+
     table.find('tbody').append(tr);
   });
 
@@ -503,25 +686,24 @@ function process(grammar) {
   }
 
   try {
-    var firstSet = FirstSetFinder.getFirstSets(grammar);
-    var followSet = FollowSetFinder.getFollowSets(grammar);
-    var parsingTable = ParsingTableFinder.getParsingTable(grammar);
+    // Dudu: A linha abaixo troca as funções do GrammarParser e do ParsingTableFinder para
+    // retornarem valores fake. Remova quando for implementar o código de verdade
+    // do ParsingTableFinder
+    FixturesApplier.apply(GrammarParser, ParsingTableFinder);
 
-    showGrammarRepresentation(grammar);
-    showFirstSetTable(firstSet);
-    showFollowSetTable(followSet);
-    showParsingTable(grammar, parsingTable);
+    var g = appState;
 
-    if (ParsingTableFinder.checkMultipleEntries(parsingTable)) {
-      $('#multiple-entries-error').show();
-      $('#sentence-recognizer-container').hide();
-    } else {
-      $('#multiple-entries-error').hide();
-      $('#sentence-recognizer-container').show();
-    }
+    g.grammar = grammar;
+    g.firstSet = FirstSetFinder.getFirstSets(grammar);
+    g.followSet = FollowSetFinder.getFollowSets(grammar);
+    g.separateProductions = GrammarParser.getSeparateProductions(grammar);
+    g.parsingTable = ParsingTableFinder.generateTable(g.separateProductions);
 
-    window.parsingTable = parsingTable;
-    window.grammar = grammar;
+    showGrammarRepresentation(g.grammar);
+    showFirstSetTable(g.firstSet);
+    showFollowSetTable(g.followSet);
+    showSeparateProductions(g.separateProductions);
+    showParsingTable(grammar, g.parsingTable);
 
     $('#result').hide().fadeIn('fast');
 
@@ -537,7 +719,7 @@ function recognize() {
   var input = $('#sentence-input').val();
 
   try {
-    var recognition = SentenceRecognizer.recognize(input, window.grammar, window.parsingTable);
+    var recognition = SentenceRecognizer.recognize(input, appState.separateProductions, appState.parsingTable.actions, appState.parsingTable.goto);
 
     showSentenceRecognition(recognition);
   } catch (e) {
@@ -546,114 +728,132 @@ function recognize() {
   }
 }
 
-},{"./first-set-finder":1,"./follow-set-finder":2,"./grammar-parser":3,"./grammar-verifier":4,"./parsing-table-finder":7,"./sentence-recognizer":8,"./utils":9,"jquery":10}],7:[function(require,module,exports){
+},{"./first-set-finder":1,"./fixtures-applier":2,"./follow-set-finder":3,"./grammar-parser":4,"./grammar-verifier":5,"./parsing-table-finder":8,"./sentence-recognizer":9,"./utils":10,"jquery":11}],8:[function(require,module,exports){
 'use strict';
 
-var Utils = require('./utils');
-var FirstSetFinder = require('./first-set-finder');
-var FollowSetFinder = require('./follow-set-finder');
 var _ = require('lodash');
 
-function getParsingRow(grammar, firstSets, followSets, symbol) {
-  var terminals = grammar.getTerminals().concat(['$']);
-  var row = {};
-
-  terminals.forEach(function (t) {
-    var first = _.find(firstSets[symbol], { symbol: t });
-    row[t] = _.get(first, 'productions', []);
-  });
-
-  // se contém sentença vazia no conjunto de produções, cria items do follow
-  if (_.includes(grammar.productionSet[symbol], '')) {
-    followSets[symbol].forEach(function (s) {
-      row[s] = row[s].concat('');
-    });
-  }
-
-  return row;
-}
-
-function getParsingTable(grammar) {
-  var firstSets = FirstSetFinder.getFirstSets(grammar);
-  var followSets = FollowSetFinder.getFollowSets(grammar);
-
-  return _.mapValues(grammar.productionSet, function (rightSide, leftSide) {
-    return getParsingRow(grammar, firstSets, followSets, leftSide);
-  });
-}
-
-function checkMultipleEntries(parsingTable) {
-  return _.some(parsingTable, function (x) {
-    return _.some(x, function (y) {
-      return y.length > 1;
+function generateTable(grammar) {
+  // Colocar • à esquerda do lado esquerdo de todas as produções
+  _.forEach(grammar.productionSet, function (production) {
+    _.forEach(production, function (right) {
+      right = '•'.concat(right);
     });
   });
+
+  // 1. Inicialização: C = {I0 = closure ({ E’ → • E})}
+  var c = { i0: closure(grammar.productionSet[grammar.startSymbol]) };
+
+  // 2. Repita:Para todo I ∈ C e X ∈ G, calcular goto(I, X) e adicionara C
+
+  // Dudu: aqui você deve retornar a tabela que usamos para reconhecimento,
+  // ela é dividida em duas tabelas:
+  //
+  // actions: a parte das ações, onde as colunas são os não-terminais
+  // e os valores podem ser "sX", "rX" ou "accept", onde X é o número
+  //
+  // goto: a parte dos desvios, onde as colunas são os terminais e os
+  // valores podem ser os números dos desvios
+  //
+  // Exemplos destes valores estão no arquivo fixtures-applier.js
+  return {
+    actions: null,
+    goto: null
+  };
+}
+
+function closure(productionSet) {}
+
+function afterDot(production) {
+  return x.include('.') ? x.substring(x.indexOf('.') + 1) : '';
 }
 
 module.exports = {
-  getParsingTable: getParsingTable,
-  checkMultipleEntries: checkMultipleEntries
+  generateTable: generateTable
 };
 
-},{"./first-set-finder":1,"./follow-set-finder":2,"./utils":9,"lodash":11}],8:[function(require,module,exports){
+},{"lodash":12}],9:[function(require,module,exports){
 'use strict';
 
-var Utils = require('./utils');
 var _ = require('lodash');
 
-function recognize(input, grammar, parsingTable) {
-  input = input.split('').concat('$');
+function recognize(input, productionSet, actionTable, gotoTable) {
+  input += '$';
 
-  var stack = ['$', grammar.startSymbol];
-  var output = '';
-  var table = [];
+  var steps = [];
+  var stack = [0];
+  var success = false;
 
-  table.push({ s: stack.join(''), i: input.join(''), o: output });
+  while (true) {
+    var startOfInput = input[0];
+    var topOfStack = _.last(stack);
+    var actionCell = _.get(actionTable[topOfStack], startOfInput);
+    var currentStep = { stack: _.clone(stack), input: input, action: '' };
 
-  while (stack.length && input.length) {
-    var last = _.last(stack);
+    if (!actionCell) {
+      currentStep.action = ['E'];
+      steps.push(currentStep);
+      break;
+    }
 
-    if (last === input[0]) {
-      input.shift();
-      stack.pop();
-      output = '';
-    } else {
-      var aux = parsingTable[last];
+    if (actionCell === 'accept') {
+      currentStep.action = ['A'];
+      success = true;
+      steps.push(currentStep);
+      break;
+    }
 
-      if (!aux || !(input[0] in aux) || aux[input[0]].length === 0) {
+    var action = actionCell[0];
+    var n = parseInt(actionCell.substr(1), 10);
+
+    if (action === 's') {
+      currentStep.action = ['S'];
+      stack.push(startOfInput, n);
+      input = input.substr(1);
+
+      steps.push(currentStep);
+      continue;
+    }
+
+    if (action === 'r') {
+      var production = productionSet[n];
+      currentStep.action = ['R', production.left + ' → ' + production.right];
+
+      // removes right-side of the production from the stack
+      _.times(production.right.length * 2, function (n) {
+        return stack.pop();
+      });
+
+      // adds left-side of the production + go-to deviation to the stack
+      var _topOfStack = _.last(stack);
+      var deviation = _.get(gotoTable[_topOfStack], production.left);
+
+      if (!deviation) {
+        currentStep.action = 'Erro';
+        steps.push(currentStep);
         break;
       }
 
-      aux = aux[input[0]][0].split('');
-
-      stack.pop();
-      stack = stack.concat(_.clone(aux).reverse());
-
-      output = last + ' → ' + Utils.emptyToEpsilon(aux.join(''));
-    }
-
-    if (!(stack.length === 0 && input.length === 0)) {
-      table.push({ s: stack.join(''), i: input.join(''), o: output });
+      stack.push(production.left, deviation);
+      steps.push(currentStep);
+      continue;
     }
   }
 
-  return {
-    success: stack.length === 0 && input.length === 0,
-    table: table
-  };
+  return { success: success, steps: steps };
 }
 
 module.exports = {
   recognize: recognize
 };
 
-},{"./utils":9,"lodash":11}],9:[function(require,module,exports){
+},{"lodash":12}],10:[function(require,module,exports){
 'use strict';
 
 var _ = require('lodash');
 
 function isNonTerminal(symbol) {
-  return (/^[A-Z]$/.test(symbol)
+  return (/^[A-Z@]$/.test(symbol)
   );
 }
 
@@ -662,12 +862,12 @@ function isTerminal(symbol) {
 }
 
 function containsNonTerminal(symbols) {
-  return (/[A-Z]/.test(symbols)
+  return (/[A-Z@]/.test(symbols)
   );
 }
 
 function containsTerminal(symbols) {
-  return (/[^A-Z]/.test(symbols)
+  return (/[^A-Z@]/.test(symbols)
   );
 }
 
@@ -693,7 +893,7 @@ module.exports = {
   emptyToEpsilon: emptyToEpsilon
 };
 
-},{"lodash":11}],10:[function(require,module,exports){
+},{"lodash":12}],11:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v2.2.3
  * http://jquery.com/
@@ -10537,7 +10737,7 @@ if ( !noGlobal ) {
 return jQuery;
 }));
 
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 (function (global){
 /**
  * @license
@@ -26783,4 +26983,4 @@ return jQuery;
 }.call(this));
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}]},{},[6]);
+},{}]},{},[7]);
