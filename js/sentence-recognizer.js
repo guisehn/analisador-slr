@@ -52,7 +52,7 @@ function recognize(input, productionSet, actionTable, gotoTable) {
       let deviation = _.get(gotoTable[topOfStack], production.left)
 
       if (!deviation) {
-        currentStep.action = 'Erro'
+        currentStep.action = ['E']
         steps.push(currentStep)
         break
       }
