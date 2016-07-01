@@ -3,7 +3,7 @@
 var _ = require('lodash')
 
 function isNonTerminal(symbol) {
-  return /^[A-Z]$/.test(symbol)
+  return /^[A-Z@]$/.test(symbol)
 }
 
 function isTerminal(symbol) {
@@ -11,11 +11,11 @@ function isTerminal(symbol) {
 }
 
 function containsNonTerminal(symbols) {
-  return /[A-Z]/.test(symbols)
+  return /[A-Z@]/.test(symbols)
 }
 
 function containsTerminal(symbols) {
-  return /[^A-Z]/.test(symbols)
+  return /[^A-Z@]/.test(symbols)
 }
 
 function emptyToEpsilon(object) {

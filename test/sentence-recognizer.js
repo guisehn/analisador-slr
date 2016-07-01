@@ -7,6 +7,7 @@ var SentenceRecognizer = require('../js/sentence-recognizer')
 describe('SentenceRecognizer', () => {
 
   let productionSet = [
+    { left: '@', right: 'E' },
     { left: 'E', right: 'E+T' },
     { left: 'E', right: 'T' },
     { left: 'T', right: 'T*F' },

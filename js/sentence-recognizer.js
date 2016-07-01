@@ -41,7 +41,7 @@ function recognize(input, productionSet, actionTable, gotoTable) {
     }
 
     if (action === 'r') {
-      let production = productionSet[n - 1]
+      let production = productionSet[n]
       currentStep.action = ['R', production.left + ' → ' + production.right]
 
       // removes right-side of the production from the stack

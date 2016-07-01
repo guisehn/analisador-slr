@@ -5,6 +5,8 @@ var GrammarVerifier = require('./grammar-verifier')
 var GrammarParser = require('./grammar-parser')
 var FirstSetFinder = require('./first-set-finder')
 var FollowSetFinder = require('./follow-set-finder')
+var ParsingTableFinder = require('./parsing-table-finder')
+var FixturesApplier = require('./fixtures-applier')
 var $ = require('jquery')
 
 $('#use-example').click(e => {
@@ -112,40 +114,63 @@ function showFollowSetTable(followSet) {
   $('#follow-set-table').html(table)
 }
 
- //criar arquivo
+function showSeparateProductions(separateProductions) {
+  $('#separate-productions').html(separateProductions
+    .map(p => $('<li></li>').html(p.left + ' → ' + p.right)))
+}
 
-function slr(grammar){
-  /* Considerando que a gramática inserida já tenha o novo símbolo S'
-  (S -> S') não será necessário o código abaixo (corrigir codigo abaixo 
-  se for usar)
-  grammar.productionSet['@'] = grammar.productionSet[grammar.startSymbol];
-  grammar.productionSet[grammar.startSymbol] = ['@']
-  */
-  
-  // Colocar • à esquerda do lado esquerdo de todas as produções
-  _.forEach(grammar.productionSet, (production) => {
-    _.forEach(production, (right) => {
-      right = "•".concat(right)
+function showParsingTable(grammar, parsingTable) {
+  var table = $('<table class="table table-bordered"></table>')
+    .html('\
+      <thead class="center">\
+        <tr>\
+          <th width="10%" rowspan="2">Estado</th>\
+          <th rowspan="1">Ação</th>\
+          <th>Desvio</th>\
+        </tr>\
+      </thead>\
+      <tbody></tbody>\
+    ')
+
+  var nonTerminals = grammar.getNonTerminals().filter(s => s !== '@')
+  var terminals = grammar.getTerminals().concat('$')
+  var nonTerminalsHeaders = nonTerminals.map(nt => $('<th></th>').text(nt))
+  var terminalsHeaders = terminals.map(t => $('<th></th>').text(t))
+  var amountOfStates = _.max([_.keys(parsingTable.actions).length, _.keys(parsingTable.gotoTable).length])
+
+  table.find('th:eq(1)').attr('colspan', terminals.length)
+  table.find('th:eq(2)').attr('colspan', nonTerminals.length)
+
+  $('<tr class="monospace center"></tr>')
+    .appendTo(table.find('thead'))
+    .append(terminalsHeaders.concat(nonTerminalsHeaders))
+
+  table.find('tbody').append(_.times(amountOfStates, n => $('<tr class="center"><td>' + n + '</td></tr>')))
+
+  _.times(amountOfStates, stateNumber => {
+    var tr = table.find('tbody tr').eq(stateNumber)
+    var actions = parsingTable.actions[stateNumber] || {};
+    var deviations = parsingTable.goto[stateNumber] || {};
+
+    terminals.forEach(terminal => {
+      var action = actions[terminal]
+      var accepted = (action === 'accept')
+      var text = accepted ? 'ac' : (action || '')
+
+      $('<td></td>').text(text).appendTo(tr).addClass(accepted ? 'success' : '')
+    })
+
+    nonTerminals.forEach(terminal => {
+      var text = deviations[terminal] || ''
+      $('<td></td>').text(text).appendTo(tr)
     })
   })
-  
-  //1. Inicialização: C = {I0 = closure ({ E’ → • E})}
-  var c = {i0: closure(grammar.productionSet[grammar.startSymbol])}
 
-  //2. Repita:Para todo I ∈ C e X ∈ G, calcular goto(I, X) e adicionara C
+  var el = table.find('tbody tr:first td:gt(1)')
+  el.css('width', (90 / el.length) + '%')
 
+  $('#parsing-table').html(table)
 }
-
-function closure(productionSet){
-
-}
-
-
-function afterDot(production){
-  return x.include(".") ? x.substring(x.indexOf(".")+1) : "";
-}
-
-//fim das funções do novo arquivo
 
 function process(grammar) {
   if (!validate(grammar)) {
@@ -153,13 +178,23 @@ function process(grammar) {
   }
 
   try {
+    // Dudu: A linha abaixo troca as funções do GrammarParser e do ParsingTableFinder para
+    // retornarem valores fake. Remova quando for implementar o código de verdade
+    // do ParsingTableFinder
+    FixturesApplier.apply(GrammarParser, ParsingTableFinder)
+
     var firstSet = FirstSetFinder.getFirstSets(grammar)
     var followSet = FollowSetFinder.getFollowSets(grammar)
+    var separateProductions = GrammarParser.getSeparateProductions(grammar)
 
     showGrammarRepresentation(grammar)
     showFirstSetTable(firstSet)
     showFollowSetTable(followSet)
-    slr(grammar)
+    showSeparateProductions(separateProductions)
+
+    var parsingTable = ParsingTableFinder.generateTable(separateProductions)
+
+    showParsingTable(grammar, parsingTable)
 
     $('#result').hide().fadeIn('fast')
 
