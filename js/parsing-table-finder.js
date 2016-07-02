@@ -1,6 +1,7 @@
 'use strict'
 
 var _ = require('lodash')
+var Utils = require('./utils')
 
 function generateTable(grammar) {
   
@@ -59,7 +60,24 @@ function generateTable(grammar) {
 }
 
 function closure(productionSet) {
+  //Para cada produção de productionSet
+  var ret[]
+  for(var i in productionSet){
 
+    ret.push(production[i])
+
+    //Se o símbolo do lado direito do • for um terminal
+    var rightDotSymbol = afterDot(productionSet[i]['right']);
+    if(Utils.isNonTerminal(right)){
+
+      //var production = pegarProduçõesde(rightDoSymbol)
+
+      //faz Closure de cada produção deste não terminal
+      for(var j in production)
+      ret.push(closure())
+    }
+    //Se não
+  }
 }
 
 function goto(state, symbol){
