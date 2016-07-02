@@ -234,7 +234,7 @@ function process(grammar) {
     // Dudu: A linha abaixo troca as funções do GrammarParser e do ParsingTableFinder para
     // retornarem valores fake. Remova quando for implementar o código de verdade
     // do ParsingTableFinder
-    FixturesApplier.apply(GrammarParser, ParsingTableFinder)
+    //FixturesApplier.apply(GrammarParser, ParsingTableFinder)
 
     var g = appState
 
