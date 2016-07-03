@@ -3,9 +3,8 @@
 var _ = require('lodash')
 var Utils = require('./utils')
 
-function generateTable(grammar) {
+function generateTable(grammar, followSet) {
   
-
   // Coloca o ponto no incio do lado direito de cada produção
   for(var i in grammar){
     grammar[i]['right'] = moveDot(grammar[i]['right'])
@@ -76,19 +75,20 @@ function generateTable(grammar) {
           gotoTable[stateN][x] = ''+stateJ
         }
       }else{
-        // 2. Se A → α• está em Ii, A ≠ S', então ação[i, a] = reduzir A → α, para todo  a ∈ Follow(A)
-
-
+        
+        if(production['left'] !== '@'){
+          // 2. Se A → α• está em Ii, A ≠ S', então ação[i, a] = reduzir A → α, para todo  a ∈ Follow(A)
+          //Follow
+          var terminals = followSet[production['left']]
+          for(var t in terminals){
+            actionsTable[stateN][terminals[t]] = 'r'+indexProduction(grammar, production)
+          }
+        }else{
+          // 3. Se S' → S• está em Ii, então defina ação[i, $] = aceita
+          actionsTable[stateN]['$'] = 'accept'
+        }
       }
-      // 3. Se S' → S• está em Ii, então defina ação[i, $] = aceita
-
-      // D. A linha da tabela desvio para o estado i é determinado do seguinte modo:
-
-      // 1. Para todos os não terminais A, se goto(Ii, A) = Ij, então descio[i, A] = j
-
-      // E. As entradas não definidas são erros
-
-      // F. O estado de partida é o estado 0
+      
     }
   }
   // Dudu: aqui você deve retornar a tabela que usamos para reconhecimento,
@@ -188,6 +188,23 @@ function cotainsStateResult(c, productionSet){
     }
   }
   return {'symbol':null,'i':null}
+}
+
+//Retorna o índice da produção na gramática
+function indexProduction(grammar, production){
+
+  for(var i = 0; i < grammar.length; i++){
+    var a = {}
+    var b = {}
+    a['left'] = grammar[i]['left']
+    b['left'] = production['left']
+    a['right'] = grammar[i]['right'].replace('•','')
+    b['right'] = production['right'].replace('•','')
+    if(_.isEqual(a,b)){
+      return i
+    }
+  }
+  return -1
 }
 
 module.exports = {

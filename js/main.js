@@ -242,7 +242,7 @@ function process(grammar) {
     g.firstSet = FirstSetFinder.getFirstSets(grammar)
     g.followSet = FollowSetFinder.getFollowSets(grammar)
     g.separateProductions = GrammarParser.getSeparateProductions(grammar)
-    g.parsingTable = ParsingTableFinder.generateTable(g.separateProductions)
+    g.parsingTable = ParsingTableFinder.generateTable(g.separateProductions, g.followSet)
 
     showGrammarRepresentation(g.grammar)
     showFirstSetTable(g.firstSet)
