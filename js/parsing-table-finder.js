@@ -5,6 +5,8 @@ var Utils = require('./utils')
 
 function generateTable(grammar, followSet) {
   
+  grammar = _.cloneDeep(grammar)
+  
   // Coloca o ponto no incio do lado direito de cada produção
   for(var i in grammar){
     grammar[i]['right'] = moveDot(grammar[i]['right'])
