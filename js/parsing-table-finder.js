@@ -72,7 +72,7 @@ function generateTable(grammar, followSet) {
           var aux = {}
           actionsTable[stateN][x] = 's'+stateJ
         }else{
-          gotoTable[stateN][x] = ''+stateJ
+          gotoTable[stateN][x] = parseInt(stateJ)
         }
       }else{
         
