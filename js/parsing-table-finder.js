@@ -12,11 +12,38 @@ function generateTable(grammar) {
   }
 
   // A. Construa o conjunto canico C = {I0, I1, ..., In}
-  goto('a', 'a')
+
+  var n = 0
   // 1. Inicialização: C = {I0 = closure ({ E’ → • E})}
-  var c = { i0: closure(grammar.productionSet[grammar.startSymbol]) }
+  var c = {}
+  c['I'+(n++)] = closure(grammar, [grammar[0]], 0)
 
   // 2. Repita:Para todo I ∈ C e X ∈ G, calcular goto(I, X) e adicionara C
+
+  // Enquanto o último estado tiver símbolos após o •
+  var countState = 0;
+  while(true){
+
+      var productionSetLastI = containsSymbolsAfterDot(c['I'+countState])
+
+      for(var i in productionSetLastI){
+        
+        var x = productionSetLastI[i]
+
+        //Armazenar o goto
+
+        var productionSet = goto(c['I'+countState],x)
+
+        productionSet = closure(grammar, productionSet, 0)
+
+        if(!cotainsStateResult(c, productionSet)){
+          c['I'+(n++)] = productionSet
+        }
+      }
+
+      countState++;
+      if(countState==Object.keys(c).length) break;
+  }
 
   // Dudu: aqui você deve retornar a tabela que usamos para reconhecimento,
   // ela é dividida em duas tabelas:
@@ -39,7 +66,7 @@ function generateTable(grammar) {
   // 1. Se A → α•aβ está em Ii e goto(Ii,a) = Ij, a ∈ Vt, então ação[i, a] = 
   //    empilhar j
   // 2. Se A → α• está em Ii, A ≠ S', então ação[i, a] = reduzir A → α, para todo
-  //    a ∈ Seguinte(A)
+  //    a ∈ Follow(A)
   // 3. Se S' → S• está em Ii, então defina ação[i, $] = aceita
 
   // D. A linha da tabela desvio para o estado i é determinado do seguinte modo:
@@ -59,27 +86,6 @@ function generateTable(grammar) {
   }
 }
 
-function closure(productionSet) {
-  //Para cada produção de productionSet
-  var ret[]
-  for(var i in productionSet){
-
-    ret.push(production[i])
-
-    //Se o símbolo do lado direito do • for um terminal
-    var rightDotSymbol = afterDot(productionSet[i]['right']);
-    if(Utils.isNonTerminal(right)){
-
-      //var production = pegarProduçõesde(rightDoSymbol)
-
-      //faz Closure de cada produção deste não terminal
-      for(var j in production)
-      ret.push(closure())
-    }
-    //Se não
-  }
-}
-
 function goto(state, symbol){
   //Retorna as produções de state com o • movido que tenha o symbol no lado direito do •
   var ret = []
@@ -90,18 +96,87 @@ function goto(state, symbol){
       // A produção é colocada na lista de retorno com o • movido à direita
       ret.push({'left':state[i]['left'],'right':moveDot(state[i]['right'])})
   }
-  return ret;
+  return ret
 }
 
+
+function closure(grammar, productionSet, index) {
+  
+  //Para cada produção do productionSet
+  for(var i = index; i < productionSet.length; i++){
+    //Se o símbolo do lado direito do • for um não terminal
+    var rightDotSymbol = afterDot(productionSet[i]['right'])
+    if(Utils.isNonTerminal(rightDotSymbol)){
+
+      var aux = productionSet.length
+      var profuctionFound = getProduction(grammar, rightDotSymbol)
+      //Faz a união entre as produções e as encontradas
+      productionSet = _.union(productionSet, profuctionFound)
+
+      //Faz Closure de cada produção encontrada e uni o resultado ao retorno
+      _.union(productionSet, closure(grammar, productionSet, aux))
+
+    }
+  }
+  return productionSet
+}
+
+// Retorna o símbolo do lado direito do •
 function afterDot(production) {
-  return production.includes('•') ? production.substring(production.indexOf('•') + 1) : ''
+  return production.includes('•') ? production.substring(production.indexOf('•') + 1, production.indexOf('•') + 2) : ''
 }
 
+// Move o ponto para direita
 function moveDot(rightProduction){
   var aux = rightProduction.indexOf('•')
   rightProduction = rightProduction.replace('•', '')
-  rightProduction = rightProduction.slice(0, aux+1) + '•' + rightProduction.slice(aux+1);
+  rightProduction = rightProduction.slice(0, aux+1) + '•' + rightProduction.slice(aux+1)
   return rightProduction
+}
+
+// Retorna as porduçãos de uma gramática que lefSymbol do lado esquerdo
+function getProduction(grammar, leftSymbol){
+  var ret = []
+  for(var i in grammar){
+    if(grammar[i]['left'] === leftSymbol){
+      ret.push(grammar[i])
+    }
+  }
+  return ret
+}
+
+//Retorna os símbolos do lado esquerdo do •
+function containsSymbolsAfterDot(productionSet){
+  var ret = []
+  for(var i in productionSet){
+    var symbolAfterDot = afterDot(productionSet[i]['right'])
+    if(symbolAfterDot && !ret.includes(symbolAfterDot)){
+      ret.push(symbolAfterDot)
+    }
+  }
+  return ret
+}
+
+//Retorna o estado que contem o mesmo resultado deste closure
+function cotainsStateResult(c, productionSet){
+  for(var i in c){
+    if(_.isEqual(c[i], productionSet)){
+    //if(c[i] == productionSet){
+      return c[i]
+    }
+  }
+  return null
+}
+
+function objectsAreSame(x, y) {
+   var objectsAreSame = true
+   for(var propertyName in x) {
+      if(x[propertyName] !== y[propertyName]) {
+         objectsAreSame = false
+         break
+      }
+   }
+   return objectsAreSame
 }
 
 module.exports = {
