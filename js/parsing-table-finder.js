@@ -20,7 +20,7 @@ function generateTable(grammar) {
 
   // 2. Repita:Para todo I ∈ C e X ∈ G, calcular goto(I, X) e adicionara C
 
-  // Enquanto o último estado tiver símbolos após o •
+  // Enquanto tiver estados para serem lidos
   var countState = 0;
   while(true){
 
@@ -35,8 +35,8 @@ function generateTable(grammar) {
         var productionSet = goto(c['I'+countState],x)
 
         productionSet = closure(grammar, productionSet, 0)
-
-        if(!cotainsStateResult(c, productionSet)){
+        var a = cotainsStateResult(c, productionSet)
+        if(!a['symbol']){
           c['I'+(n++)] = productionSet
         }
       }
@@ -45,6 +45,52 @@ function generateTable(grammar) {
       if(countState==Object.keys(c).length) break;
   }
 
+  // B. Cada linha da tabela corresponde a um estado i do analisador, o qual é
+  //    construído a partir de Ii, o <= i <= n
+  
+  var actionsTable = {}
+  var gotoTable = {}
+
+  // C. A linha da tabela ação para o estado i é determinada pelas regras abaixo.
+  //    Entretando, se houver algum conflito na aplicação destas regras, esntão a
+  //    gramática não é SLR(1), e o algoritmo falha:
+
+  for(var n in c){ // Para cada estado n de c
+    var stateN = n.replace('I', '')
+    actionsTable[stateN] = {}
+    gotoTable[stateN] = {}
+    for(var i in c[n]){ // Para cada produção de In
+
+      var production = c[n][i]
+      var x = afterDot(production['right'])
+      if(x){
+        // 1. Se A → α•aβ está em Ii e goto(Ii,a) = Ij, a ∈ Vt, então ação[i, a] = empilhar j
+        var resultGoto = goto(c[n], x)
+        var resultClosure = closure(grammar, resultGoto, 0)
+        var resultStateResult = cotainsStateResult(c, resultClosure) 
+        var stateJ = resultStateResult['i'].replace('I', '')
+        if(Utils.isTerminal(x)){
+          var aux = {}
+          actionsTable[stateN][x] = 's'+stateJ
+        }else{
+          gotoTable[stateN][x] = ''+stateJ
+        }
+      }else{
+        // 2. Se A → α• está em Ii, A ≠ S', então ação[i, a] = reduzir A → α, para todo  a ∈ Follow(A)
+
+
+      }
+      // 3. Se S' → S• está em Ii, então defina ação[i, $] = aceita
+
+      // D. A linha da tabela desvio para o estado i é determinado do seguinte modo:
+
+      // 1. Para todos os não terminais A, se goto(Ii, A) = Ij, então descio[i, A] = j
+
+      // E. As entradas não definidas são erros
+
+      // F. O estado de partida é o estado 0
+    }
+  }
   // Dudu: aqui você deve retornar a tabela que usamos para reconhecimento,
   // ela é dividida em duas tabelas:
   //
@@ -56,33 +102,9 @@ function generateTable(grammar) {
   //
   // Exemplos destes valores estão no arquivo fixtures-applier.js
 
-  // B. Cada linha da tabela corresponde a um estado i do analisador, o qual é
-  //    construído a partir de Ii, o <= i <= n
-
-  // C. A linha da tabela ação para o estado i é determinada pelas regras abaixo.
-  //    Entretando, se houver algum conflito na aplicação destas regras, esntão a
-  //    gramática não é SLR(1), e o algoritmo falha:
-
-  // 1. Se A → α•aβ está em Ii e goto(Ii,a) = Ij, a ∈ Vt, então ação[i, a] = 
-  //    empilhar j
-  // 2. Se A → α• está em Ii, A ≠ S', então ação[i, a] = reduzir A → α, para todo
-  //    a ∈ Follow(A)
-  // 3. Se S' → S• está em Ii, então defina ação[i, $] = aceita
-
-  // D. A linha da tabela desvio para o estado i é determinado do seguinte modo:
-
-  // 1. Para todos os não terminais A, se goto(Ii, A) = Ij, então descio[i, A] = j
-
-  // E. As entradas não definidas são erros
-
-  // F. O estado de partida é o estado 0
-
-
-
-
   return {
-    actions: null,
-    goto: null
+    actions: actionsTable,
+    goto: gotoTable
   }
 }
 
@@ -145,7 +167,7 @@ function getProduction(grammar, leftSymbol){
   return ret
 }
 
-//Retorna os símbolos do lado esquerdo do •
+//Retorna os símbolos do lado direito do •
 function containsSymbolsAfterDot(productionSet){
   var ret = []
   for(var i in productionSet){
@@ -162,21 +184,10 @@ function cotainsStateResult(c, productionSet){
   for(var i in c){
     if(_.isEqual(c[i], productionSet)){
     //if(c[i] == productionSet){
-      return c[i]
+      return {'symbol':c[i],'i':i}
     }
   }
-  return null
-}
-
-function objectsAreSame(x, y) {
-   var objectsAreSame = true
-   for(var propertyName in x) {
-      if(x[propertyName] !== y[propertyName]) {
-         objectsAreSame = false
-         break
-      }
-   }
-   return objectsAreSame
+  return {'symbol':null,'i':null}
 }
 
 module.exports = {
