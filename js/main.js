@@ -1,13 +1,11 @@
 'use strict'
 
 var Utils = require('./utils')
-var GrammarVerifier = require('./grammar-verifier')
 var GrammarParser = require('./grammar-parser')
 var FirstSetFinder = require('./first-set-finder')
 var FollowSetFinder = require('./follow-set-finder')
 var ParsingTableFinder = require('./parsing-table-finder')
 var SentenceRecognizer = require('./sentence-recognizer')
-var FixturesApplier = require('./fixtures-applier')
 var $ = require('jquery')
 
 var appState = {}
@@ -58,20 +56,6 @@ function reset() {
 
 function showError(message) {
   $('#error-message').hide().html(message).fadeIn('fast')
-}
-
-function validate(grammar) {
-  if (!GrammarVerifier.isLeftFactored(grammar)) {
-    showError('Gramática deve ser fatorada à esquerda')
-    return false
-  }
-
-  /*if (GrammarVerifier.isLeftRecursive(grammar)) {
-    showError('Gramática não pode possuir recursão à esquerda')
-    return false
-  }*/
-
-  return true
 }
 
 function mountTable(object, leftTitle, rightTitle) {
@@ -226,23 +210,14 @@ function showSentenceRecognition(recognition) {
 }
 
 function process(grammar) {
-  if (!validate(grammar)) {
-    return
-  }
-
   try {
-    // Dudu: A linha abaixo troca as funções do GrammarParser e do ParsingTableFinder para
-    // retornarem valores fake. Remova quando for implementar o código de verdade
-    // do ParsingTableFinder
-    FixturesApplier.apply(GrammarParser, ParsingTableFinder)
-
     var g = appState
 
     g.grammar = grammar
     g.firstSet = FirstSetFinder.getFirstSets(grammar)
     g.followSet = FollowSetFinder.getFollowSets(grammar)
     g.separateProductions = GrammarParser.getSeparateProductions(grammar)
-    g.parsingTable = ParsingTableFinder.generateTable(g.separateProductions)
+    g.parsingTable = ParsingTableFinder.generateTable(g.separateProductions, g.followSet)
 
     showGrammarRepresentation(g.grammar)
     showFirstSetTable(g.firstSet)
