@@ -121,18 +121,18 @@ describe('SentenceRecognizer', () => {
       expect(result.success).to.be.true
       expect(result.steps).to.be.deep.equal([
         { stack: [0], input: 'i*i+i$', action: ['S'] },
-        { stack: [0, 'i', 5], input: '*i+i$', action: ['R', 'F → i'] },
-        { stack: [0, 'F', 3], input: '*i+i$', action: ['R', 'T → F'] },
+        { stack: [0, 'i', 5], input: '*i+i$', action: ['R', 'F', 'i'] },
+        { stack: [0, 'F', 3], input: '*i+i$', action: ['R', 'T', 'F'] },
         { stack: [0, 'T', 2], input: '*i+i$', action: ['S'] },
         { stack: [0, 'T', 2, '*', 7], input: 'i+i$', action: ['S'] },
-        { stack: [0, 'T', 2, '*', 7, 'i', 5], input: '+i$', action: ['R', 'F → i'] },
-        { stack: [0, 'T', 2, '*', 7, 'F', 10], input: '+i$', action: ['R', 'T → T*F'] },
-        { stack: [0, 'T', 2], input: '+i$', action: ['R', 'E → T'] },
+        { stack: [0, 'T', 2, '*', 7, 'i', 5], input: '+i$', action: ['R', 'F', 'i'] },
+        { stack: [0, 'T', 2, '*', 7, 'F', 10], input: '+i$', action: ['R', 'T', 'T*F'] },
+        { stack: [0, 'T', 2], input: '+i$', action: ['R', 'E', 'T'] },
         { stack: [0, 'E', 1], input: '+i$', action: ['S'] },
         { stack: [0, 'E', 1, '+', 6], input: 'i$', action: ['S'] },
-        { stack: [0, 'E', 1, '+', 6, 'i', 5], input: '$', action: ['R', 'F → i'] },
-        { stack: [0, 'E', 1, '+', 6, 'F', 3], input: '$', action: ['R', 'T → F'] },
-        { stack: [0, 'E', 1, '+', 6, 'T', 9], input: '$', action: ['R', 'E → E+T'] },
+        { stack: [0, 'E', 1, '+', 6, 'i', 5], input: '$', action: ['R', 'F', 'i'] },
+        { stack: [0, 'E', 1, '+', 6, 'F', 3], input: '$', action: ['R', 'T', 'F'] },
+        { stack: [0, 'E', 1, '+', 6, 'T', 9], input: '$', action: ['R', 'E', 'E+T'] },
         { stack: [0, 'E', 1], input: '$', action: ['A'] }
       ])
     })

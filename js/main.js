@@ -103,7 +103,7 @@ function showFollowSetTable(followSet) {
 
 function showSeparateProductions(separateProductions) {
   $('#separate-productions').html(separateProductions
-    .map(p => $('<li></li>').html(p.left + ' → ' + p.right)))
+    .map(p => $('<li></li>').html(p.left + ' → ' + Utils.emptyToEpsilon(p.right))))
 }
 
 function showParsingTable(grammar, parsingTable) {
@@ -197,7 +197,8 @@ function showSentenceRecognition(recognition) {
     $('<td class="monospace"></td>').appendTo(tr).text(step.stack.join(' '))
     $('<td class="monospace"></td>').appendTo(tr).text(step.input)
     $('<td></td>').appendTo(tr).html(actionText + (step.action[1]
-      ? ' <span class="monospace">' + step.action[1] + '</span>' : ''))
+      ? ' <span class="monospace">' + (step.action[1]
+        + ' → ' + Utils.emptyToEpsilon(step.action[2])) + '</span>' : ''))
 
     table.find('tbody').append(tr)
   })
