@@ -1,7 +1,6 @@
 'use strict'
 
 var Utils = require('./utils')
-var GrammarVerifier = require('./grammar-verifier')
 var GrammarParser = require('./grammar-parser')
 var FirstSetFinder = require('./first-set-finder')
 var FollowSetFinder = require('./follow-set-finder')
@@ -57,20 +56,6 @@ function reset() {
 
 function showError(message) {
   $('#error-message').hide().html(message).fadeIn('fast')
-}
-
-function validate(grammar) {
-  if (!GrammarVerifier.isLeftFactored(grammar)) {
-    showError('Gramática deve ser fatorada à esquerda')
-    return false
-  }
-
-  /*if (GrammarVerifier.isLeftRecursive(grammar)) {
-    showError('Gramática não pode possuir recursão à esquerda')
-    return false
-  }*/
-
-  return true
 }
 
 function mountTable(object, leftTitle, rightTitle) {
@@ -225,10 +210,6 @@ function showSentenceRecognition(recognition) {
 }
 
 function process(grammar) {
-  if (!validate(grammar)) {
-    return
-  }
-
   try {
     var g = appState
 
