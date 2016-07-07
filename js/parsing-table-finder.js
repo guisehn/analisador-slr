@@ -27,7 +27,7 @@ function generateTable(grammar, followSet) {
     for (var i in productionSetLastI) {
       var x = productionSetLastI[i]
 
-      //Armazenar o goto
+      // Armazenar o goto
       var productionSet = goto(c['I' + countState], x)
       productionSet = closure(grammar, productionSet, 0)
 
@@ -99,7 +99,7 @@ function generateTable(grammar, followSet) {
 }
 
 function goto(state, symbol) {
-  //Retorna as produções de state com o • movido que tenha o symbol no lado direito do •
+  // Retorna as produções de state com o • movido que tenha o symbol no lado direito do •
   var ret = []
 
   // Para cada produção do state
@@ -116,7 +116,6 @@ function goto(state, symbol) {
 
   return ret
 }
-
 
 function closure(grammar, productionSet, index) {
   // Para cada produção do productionSet
@@ -141,7 +140,7 @@ function closure(grammar, productionSet, index) {
 
 // Retorna o símbolo do lado direito do •
 function afterDot(production) {
-  return production.includes('•')
+  return _.includes(production, '•')
     ? production.substring(production.indexOf('•') + 1, production.indexOf('•') + 2)
     : ''
 }
@@ -174,7 +173,7 @@ function containsSymbolsAfterDot(productionSet) {
   for (var i in productionSet) {
     var symbolAfterDot = afterDot(productionSet[i].right)
 
-    if (symbolAfterDot && !ret.includes(symbolAfterDot)) {
+    if (symbolAfterDot && !_.includes(ret, symbolAfterDot)) {
       ret.push(symbolAfterDot)
     }
   }
@@ -193,7 +192,7 @@ function containsStateResult(c, productionSet) {
   return { symbol: null, i: null }
 }
 
-//Retorna o índice da produção na gramática
+// Retorna o índice da produção na gramática
 function indexProduction(grammar, production) {
   for (var i = 0; i < grammar.length; i++) {
     var a = {}
